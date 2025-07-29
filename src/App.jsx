@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Toaster } from '@/components/ui/toaster';
 import { toast } from '@/components/ui/use-toast';
+import { FaFacebook, FaInstagram, FaYoutube, FaTiktok } from 'react-icons/fa';
 import QRCode from 'qrcode';
 import html2canvas from 'html2canvas';
 import { supabase } from './supabaseClient'; // <-- Import supabase client
@@ -595,6 +596,42 @@ function App() {
         </Dialog>
 
         <Toaster />
+        {/* Footer Section */}
+<footer className="mt-20 bg-white/5 border-t border-white/10 text-white py-8">
+  <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-3 gap-6 items-center text-sm">
+    {/* Left: Copyright */}
+    <div className="text-center md:text-left">
+      &copy; {new Date().getFullYear()} REHA Events. All rights reserved.
+    </div>
+
+    {/* Center: Contact Info */}
+    <div className="text-center">
+      <p>
+        📞 +251 939303919 &nbsp; | &nbsp; +251 900466222  
+      </p>
+      <p>
+        📧 <a href="mailto:rehaevents263@gmail.com" className="text-blue-400 underline hover:text-blue-500">
+          rehaevents263@gmail.com
+        </a>
+      </p>
+    </div>
+
+    <div className="flex justify-center md:justify-end gap-4">
+      <a href="https://web.facebook.com/people/Reha-Events/61578703268696/" target="_blank" rel="noopener noreferrer" className="hover:text-blue-500 transition">
+        <FaFacebook className="w-5 h-5" />
+      </a>
+      <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-pink-400 transition">
+        <FaInstagram className="w-5 h-5" />
+      </a>
+      <a href="https://www.youtube.com/channel/UCwwrCvLWk1he6PVX1MaGyLw" target="_blank" rel="noopener noreferrer" className="hover:text-sky-400 transition">
+        <FaYoutube className="w-5 h-5" />
+      </a>
+      <a href="https://www.tiktok.com/@reha_event_and_promotion" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
+        <FaTiktok className="w-5 h-5" />
+      </a>
+    </div>
+  </div>
+</footer>
       </div>
     </>
   );
