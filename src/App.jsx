@@ -38,6 +38,14 @@ function App() {
 
   const ticketRef = useRef(null);
 
+  // Function to get next sequential ticket number and save in localStorage
+  const getNextTicketNumber = () => {
+    const lastNumber = parseInt(localStorage.getItem('lastTicketNumber') || '0', 10);
+    const nextNumber = lastNumber + 1;
+    localStorage.setItem('lastTicketNumber', nextNumber.toString());
+    return nextNumber;
+  };
+
   const generateQRCode = async (ticketData) => {
     try {
       const qrData = JSON.stringify({
@@ -76,7 +84,9 @@ function App() {
       return;
     }
 
-    const ticketId = `REHA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // Use sequential ticket number
+    const nextNumber = getNextTicketNumber();
+    const ticketId = `Reha-${String(nextNumber).padStart(2, '0')}`;
     const totalPrice = eventDetails.price * bookingData.tickets;
 
     const ticketData = {
@@ -132,8 +142,8 @@ function App() {
     try {
       // Use html2canvas to render the ticket DOM to canvas
       const canvas = await html2canvas(ticketRef.current, {
-        backgroundColor: null, // set to null to retain transparency if needed
-        scale: 2, // increase scale for better quality
+        backgroundColor: null,
+        scale: 2,
       });
 
       const image = canvas.toDataURL('image/png');
@@ -439,6 +449,7 @@ function App() {
 
             {generatedTicket && (
               <div className="space-y-6">
+                {/* Ticket card to capture as image */}
                 <Card
                   ref={ticketRef}
                   className="ticket-gradient p-6 ticket-pattern relative"
