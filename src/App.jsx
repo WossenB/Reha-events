@@ -11,6 +11,23 @@ import { Toaster } from '@/components/ui/toaster';
 import { toast } from '@/components/ui/use-toast';
 import QRCode from 'qrcode';
 import html2canvas from 'html2canvas';
+import { supabase } from './supabaseClient'; // <-- Import supabase client
+
+// Insert person into Supabase and return result
+async function insertPerson(bookingData) {
+  const { data, error } = await supabase
+    .from('person')
+    .insert([
+      {
+        full_name: bookingData.name,
+        email: bookingData.email,
+        phone: bookingData.phone,
+      },
+    ])
+    .select();
+
+  return { data, error };
+}
 
 function App() {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
@@ -73,59 +90,59 @@ function App() {
   };
 
   const handleBooking = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (!bookingData.name || !bookingData.email || !bookingData.phone) {
-      toast({
-        title: 'Missing Information',
-        description: 'Please fill in all required fields.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const { data, error } = await insertPerson(bookingData);
-
-if (error || !data || data.length === 0) {
-  toast({
-    title: 'Booking Failed',
-    description: 'There was an error saving your ticket. Please try again.',
-    variant: 'destructive',
-  });
-  return;
-};
-
-const person = data[0];
-    const totalPrice = eventDetails.price * bookingData.tickets;
-
-    const ticketData = {
-  id: person.ticket_id,
-  name: person.full_name,
-  email: person.email,
-  phone: person.phone,
-  tickets: bookingData.tickets,
-  totalPrice: eventDetails.price * bookingData.tickets,
-  bookingDate: new Date().toLocaleDateString(),
-  event: eventDetails,
-};
-
-    const qrCode = await generateQRCode(ticketData);
-const ticketWithQR = { ...ticketData, qrCode };
-setGeneratedTicket(ticketWithQR);
-setIsBookingOpen(false);
-setIsTicketOpen(true);
-toast({
-  title: 'Booking Successful! 🎉',
-  description: `Your ticket has been saved. Ticket ID: ${ticketData.id}`,
-});
-
-    setBookingData({
-      name: '',
-      email: '',
-      phone: '',
-      tickets: 1,
+  if (!bookingData.name || !bookingData.email || !bookingData.phone) {
+    toast({
+      title: 'Missing Information',
+      description: 'Please fill in all required fields.',
+      variant: 'destructive',
     });
+    return;
+  }
+
+  const { data, error } = await insertPerson(bookingData);
+
+  if (error || !data || data.length === 0) {
+    toast({
+      title: 'Booking Failed',
+      description: 'There was an error saving your ticket. Please try again.',
+      variant: 'destructive',
+    });
+    return;
+  }
+
+  const person = data[0];
+  const totalPrice = eventDetails.price * bookingData.tickets;
+
+  const ticketData = {
+    id: person.ticket_id, // Use ticket_id from your table
+    name: person.full_name,
+    email: person.email,
+    phone: person.phone,
+    tickets: bookingData.tickets, // For display only
+    totalPrice: totalPrice,
+    bookingDate: new Date().toLocaleDateString(),
+    event: eventDetails,
   };
+
+  const qrCode = await generateQRCode(ticketData);
+  const ticketWithQR = { ...ticketData, qrCode };
+  setGeneratedTicket(ticketWithQR);
+  setIsBookingOpen(false);
+  setIsTicketOpen(true);
+  toast({
+    title: 'Booking Successful! 🎉',
+    description: `Your ticket has been saved. Ticket ID: ${ticketData.id}`,
+  });
+
+  setBookingData({
+    name: '',
+    email: '',
+    phone: '',
+    tickets: 1,
+  });
+};
 
   // Generate image from ticket DOM element and show preview
   const generateTicketImage = async () => {
