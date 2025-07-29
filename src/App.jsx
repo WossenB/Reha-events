@@ -84,41 +84,40 @@ function App() {
       return;
     }
 
-    // Use sequential ticket number
-    const nextNumber = getNextTicketNumber();
-    const ticketId = `Reha-${String(nextNumber).padStart(2, '0')}`;
+    const { data, error } = await insertPerson(bookingData);
+
+if (error || !data || data.length === 0) {
+  toast({
+    title: 'Booking Failed',
+    description: 'There was an error saving your ticket. Please try again.',
+    variant: 'destructive',
+  });
+  return;
+};
+
+const person = data[0];
     const totalPrice = eventDetails.price * bookingData.tickets;
 
     const ticketData = {
-      id: ticketId,
-      name: bookingData.name,
-      email: bookingData.email,
-      phone: bookingData.phone,
-      tickets: bookingData.tickets,
-      totalPrice,
-      bookingDate: new Date().toLocaleDateString(),
-      event: eventDetails,
-    };
+  id: person.ticket_id,
+  name: person.full_name,
+  email: person.email,
+  phone: person.phone,
+  tickets: bookingData.tickets,
+  totalPrice: eventDetails.price * bookingData.tickets,
+  bookingDate: new Date().toLocaleDateString(),
+  event: eventDetails,
+};
 
     const qrCode = await generateQRCode(ticketData);
-
-    const ticketWithQR = {
-      ...ticketData,
-      qrCode,
-    };
-
-    const existingTickets = JSON.parse(localStorage.getItem('rehaTickets') || '[]');
-    existingTickets.push(ticketWithQR);
-    localStorage.setItem('rehaTickets', JSON.stringify(existingTickets));
-
-    setGeneratedTicket(ticketWithQR);
-    setIsBookingOpen(false);
-    setIsTicketOpen(true);
-
-    toast({
-      title: 'Booking Successful! 🎉',
-      description: `Your ticket has been generated successfully. Total: ${totalPrice} ETB`,
-    });
+const ticketWithQR = { ...ticketData, qrCode };
+setGeneratedTicket(ticketWithQR);
+setIsBookingOpen(false);
+setIsTicketOpen(true);
+toast({
+  title: 'Booking Successful! 🎉',
+  description: `Your ticket has been saved. Ticket ID: ${ticketData.id}`,
+});
 
     setBookingData({
       name: '',
