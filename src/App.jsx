@@ -45,13 +45,13 @@ function App() {
 
   const eventDetails = {
     title: 'REHA Event 2025',
-    date: 'August 9, 2025',
+    date: 'September 13, 2025',
     time: '7:00 PM - 11:00 PM',
     location: 'መሶብ ባህላዊ ሙዚቃ - ለም ሆቴል',
     price: 300,
     currency: 'ETB',
-    description: 'Energetic, Raw live performance by highlighted artist “Dele”',
-    Artist: 'Dele',
+    description: 'Energetic, Raw live performance by highlighted artist "Nati(DON) & Mallo"',
+    Artist: 'Nati(DON) & Mallo',
   };
 
   const ticketRef = useRef(null);
