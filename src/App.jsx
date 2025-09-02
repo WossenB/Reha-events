@@ -215,7 +215,7 @@ function App() {
         >
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <img src="./src/Logo.png" alt="REHA Events Logo" className="h-12 w-auto" />
+              <img src="./src/logo/Logo.png" alt="REHA Events Logo" className="h-12 w-auto" />
               <div>
                 <h1 className="text-2xl font-bold gradient-text">REHA</h1>
                 <p className="text-sm text-gray-300">Events</p>
