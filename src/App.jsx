@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import { Calendar, MapPin, Clock, Users, Ticket, Download, QrCode } from 'lucide-react';
@@ -14,20 +14,19 @@ import QRCode from 'qrcode';
 import html2canvas from 'html2canvas';
 import { supabase } from './supabaseClient'; // <-- Import supabase client
 
-// Insert person into Supabase and return result
+// Reserve ticket via Supabase (server decides wave + price)
 async function insertPerson(bookingData) {
-  const { data, error } = await supabase
-    .from('person')
-    .insert([
-      {
-        full_name: bookingData.name,
-        email: bookingData.email,
-        phone: bookingData.phone,
-      },
-    ])
-    .select();
+  const { data, error } = await supabase.rpc('reserve_ticket', {
+    p_full_name: bookingData.name,
+    p_email: bookingData.email,
+    p_phone: bookingData.phone,
+    p_tickets: bookingData.tickets,
+  });
 
-  return { data, error };
+  // Depending on RPC return type, Supabase may return an object or an array
+  const person = Array.isArray(data) ? data[0] : data;
+
+  return { person, error };
 }
 
 function App() {
@@ -42,17 +41,66 @@ function App() {
   const [generatedTicket, setGeneratedTicket] = useState(null);
   const [ticketImage, setTicketImage] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const intervalId = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   const eventDetails = {
-    title: 'REHA Event 2025',
-    date: 'September 13, 2025',
+    title: 'REHA Event 2026',
+    date: 'March 14, 2026',
     time: '7:00 PM - 11:00 PM',
-    location: 'መሶብ ባህላዊ ሙዚቃ - ለም ሆቴል',
-    price: 300,
+    location: 'Alliance Ethio Française-PIASSA,አሊያንስ ኢትዮ ፍራንሲስ-ፒያሳ',
+    price: 500,
     currency: 'ETB',
-    description: 'Energetic, Raw live performance by highlighted artist "Nati(DON) & Mallo"',
-    Artist: 'Nati(DON) & Mallo',
+    description: 'Energetic, Raw live performance by highlighted artist "@isaac-addisu"',
+    Artist: 'ISAAC-ADDISU',
   };
+
+  const ticketWaves = [
+    {
+      id: 'first',
+      name: 'First Wave',
+      label: 'Feb 21, 2026 - Mar 7, 2026',
+      price: 500,
+      // Ethiopia time (Africa/Addis_Ababa) is UTC+03:00 (no DST)
+      startsAt: '2026-02-21T00:00:00+03:00',
+      endsAt: '2026-03-07T23:59:59+03:00',
+    },
+    {
+      id: 'second',
+      name: 'Second Wave',
+      label: 'Mar 8, 2026 - Mar 13, 2026',
+      price: 700,
+      startsAt: '2026-03-08T00:00:00+03:00',
+      endsAt: '2026-03-13T23:59:59+03:00',
+    },
+    {
+      id: 'third',
+      name: 'Third Wave (At the Door)',
+      label: 'Mar 14, 2026 (At the door)',
+      price: 1000,
+      startsAt: '2026-03-14T00:00:00+03:00',
+      endsAt: '2026-03-14T23:59:59+03:00',
+    },
+  ];
+
+  const getCurrentWave = (atMs = nowMs) => {
+    const now = atMs;
+
+    return (
+      ticketWaves.find((wave) => {
+        const start = new Date(wave.startsAt).getTime();
+        const end = new Date(wave.endsAt).getTime();
+        return now >= start && now <= end;
+      }) || null
+    );
+  };
+
+  const currentWave = getCurrentWave(nowMs);
+  const pricePerTicket = currentWave ? currentWave.price : eventDetails.price;
 
   const ticketRef = useRef(null);
 
@@ -74,6 +122,9 @@ function App() {
         time: eventDetails.time,
         location: eventDetails.location,
         Artist: eventDetails.Artist,
+        wave: ticketData.waveName,
+        pricePerTicket: ticketData.pricePerTicket,
+        totalPrice: ticketData.totalPrice,
       });
 
       return await QRCode.toDataURL(qrData, {
@@ -102,19 +153,23 @@ function App() {
     return;
   }
 
-  const { data, error } = await insertPerson(bookingData);
+  const { person, error } = await insertPerson(bookingData);
 
-  if (error || !data || data.length === 0) {
+  if (error || !person) {
     toast({
       title: 'Booking Failed',
-      description: 'There was an error saving your ticket. Please try again.',
+      description:
+        error?.message === 'Tickets not on sale'
+          ? 'Ticket sales are currently closed. Please check back later.'
+          : 'There was an error saving your ticket. Please try again.',
       variant: 'destructive',
     });
     return;
   }
 
-  const person = data[0];
-  const totalPrice = eventDetails.price * bookingData.tickets;
+  const waveName = ticketWaves.find((w) => w.id === person.wave_id)?.name || person.wave_id || 'Wave';
+  const totalPrice = person.total_price_etb ?? pricePerTicket * bookingData.tickets;
+  const pricePaid = person.price_per_ticket_etb ?? pricePerTicket;
 
   const ticketData = {
     id: person.ticket_id, // Use ticket_id from your table
@@ -122,7 +177,9 @@ function App() {
     email: person.email,
     phone: person.phone,
     tickets: bookingData.tickets, // For display only
+    pricePerTicket: pricePaid,
     totalPrice: totalPrice,
+    waveName,
     bookingDate: new Date().toLocaleDateString(),
     event: eventDetails,
   };
@@ -282,8 +339,10 @@ function App() {
                       <div className="flex items-center justify-between">
                         <h3 className="text-2xl font-bold gradient-text">{eventDetails.title}</h3>
                         <div className="text-right">
-                          <p className="text-3xl font-bold text-green-400">{eventDetails.price} ETB</p>
-                          <p className="text-sm text-gray-400">per ticket</p>
+                          <p className="text-3xl font-bold text-green-400">{pricePerTicket} ETB</p>
+                          <p className="text-sm text-gray-400">
+                            {currentWave ? `${currentWave.name} · per ticket` : 'per ticket'}
+                          </p>
                         </div>
                       </div>
 
@@ -319,6 +378,17 @@ function App() {
                             <p className="font-semibold">{eventDetails.Artist}</p>
                           </div>
                         </div>
+                      </div>
+
+                      <div className="mt-4 text-sm text-gray-300">
+                        <p className="font-semibold mb-1">Ticket Waves</p>
+                        <ul className="space-y-1 list-disc list-inside">
+                          {ticketWaves.map((wave) => (
+                            <li key={wave.id}>
+                              {wave.name}: {wave.price} {eventDetails.currency} ({wave.label})
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     </div>
                   </Card>
@@ -440,10 +510,18 @@ function App() {
                 />
               </div>
 
-              <div className="bg-white/10 p-4 rounded-lg">
+              <div className="bg-white/10 p-4 rounded-lg space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold">Current Wave:</span>
+                  <span className="text-sm text-right">
+                    {currentWave ? `${currentWave.name} (${currentWave.label})` : 'Tickets not on sale right now'}
+                  </span>
+                </div>
                 <div className="flex justify-between items-center">
                   <span className="font-semibold">Total Amount:</span>
-                  <span className="text-2xl font-bold text-green-400">{eventDetails.price * bookingData.tickets} ETB</span>
+                  <span className="text-2xl font-bold text-green-400">
+                    {pricePerTicket * bookingData.tickets} ETB
+                  </span>
                 </div>
               </div>
 
@@ -520,6 +598,24 @@ function App() {
                     <div>
                       <p className="text-gray-200 text-sm">Location</p>
                       <p className="font-semibold">{eventDetails.location}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm mt-2">
+                      <div>
+                        <p className="text-gray-200">Wave</p>
+                        <p className="font-semibold">{generatedTicket.waveName}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-200">Price</p>
+                        <p className="font-semibold">
+                          {generatedTicket.pricePerTicket} {eventDetails.currency}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <p className="text-gray-200 text-sm">Total Paid</p>
+                      <p className="font-semibold">
+                        {generatedTicket.totalPrice} {eventDetails.currency}
+                      </p>
                     </div>
                     {generatedTicket.qrCode && (
                       <>
